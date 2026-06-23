@@ -61,8 +61,8 @@ const CHANNEL_WELCOME_LOG = '1518793447862042757';
 const CHANNEL_APPLY_LOG = '1518794178966978682'; 
 
 // 🎫 إعدادات نظام التكت (تعديل حسب سيرفرك)
-const TICKET_CATEGORY_ID = '1515782065025449994'; // ID الكاتيجوري اللي تفتح فيه التكتات[cite: 1]
-const TICKET_LOG_CHANNEL = '1518795837017161798'; // روم لوغ التكتات[cite: 1]
+const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات[cite: 1]
+const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات[cite: 1]
 
 // 🖼️ روابط صور لوحات التحكم
 const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
