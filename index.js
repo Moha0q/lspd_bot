@@ -9,7 +9,7 @@ http.createServer((req, res) => {
 });
 // ===================================================================================
 
-const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder, PermissionFlagsBits } = require('discord.js'); 
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder, PermissionFlagsBits, ChannelType } = require('discord.js'); 
 const fs = require('fs'); 
 require('dotenv').config();
 
@@ -55,10 +55,15 @@ const CHANNEL_WELCOME_LOG = '1518793447862042757';
 
 const CHANNEL_APPLY_LOG = '1518794178966978682'; 
 
+// 🎫 إعدادات نظام التكت الجديد (تعديل حسب سيرفرك)
+const TICKET_CATEGORY_ID = '1515782065025449994'; // ID الكاتيجوري اللي تفتح فيه التكتات
+const TICKET_LOG_CHANNEL = '1518795837017161798'; // روم لوغ التكتات 
+
 // 🖼️ روابط صور لوحات التحكم (قم بتغييرها لروابط صور تخص الـ LSPD)
-const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png?ex=6a3ad98c&is=6a39880c&hm=b86b981c4ca28fafab01ebe7b36028ac98a48ab5611d418d6c2c32e0b7bb328d&=&format=webp&quality=lossless'; 
-const URL_TICKET_IMAGE      = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png?ex=6a3ad98c&is=6a39880c&hm=b86b981c4ca28fafab01ebe7b36028ac98a48ab5611d418d6c2c32e0b7bb328d&=&format=webp&quality=lossless'; 
-const URL_ADMIN_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png?ex=6a3ad98c&is=6a39880c&hm=b86b981c4ca28fafab01ebe7b36028ac98a48ab5611d418d6c2c32e0b7bb328d&=&format=webp&quality=lossless'; 
+const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
+const URL_TICKET_IMAGE      = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
+const URL_ADMIN_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
+const URL_RULES_IMAGE       = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; // صورة بنر القوانين
 
 // 📂 رومات اللوغات المنفصلة بالكامل:
 const LOG_APPLY_DECISION = '1518795837017161798'; 
@@ -95,7 +100,7 @@ const ALL_LSPD_ROLE_IDS = LSPD_ROLES.map(r => r.value);
 // ==========================================================================================
 
 client.on('ready', () => {
-    console.log(`✅ البوت جاهز، ومفعل نظام الترحيب الخاص بـ LSPD: ${client.user.tag}`);
+    console.log(`✅ البوت جاهز، ومفعل نظام الترحيب، التكت، والقوانين المنسدلة الكاملة: ${client.user.tag}`);
 });
 
 const activeActions = new Map();
@@ -165,6 +170,60 @@ client.on('messageCreate', async (message) => {
         await message.delete();
     }
 
+    // 🎫 أمر إنشاء لوحة فتح التكت 
+    if (command === 'setup-ticket') {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return message.reply('❌ للادارة العليا فقط.');
+
+        const embed = new EmbedBuilder()
+            .setTitle('✉️ مركز الدعم والتواصل لقطاع الـ LSPD ✉️')
+            .setDescription('إذا كان لديك استفسار، شكوى، أو ترغب في التواصل مع مسؤولي وموجّهي القطاع، يرجى الضغط على الزر أدناه لفتح تكت خاص بك.')
+            .setColor('#1a237e')
+            .setFooter({ text: 'قنوات التواصل الرسمية لشرطة لوس سانتوس' });
+
+        if (URL_TICKET_IMAGE && URL_TICKET_IMAGE.startsWith('http')) {
+            embed.setImage(URL_TICKET_IMAGE);
+        }
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('lspd_open_ticket').setLabel('فتح تكت تواصل ✉️').setStyle(ButtonStyle.Success)
+        );
+
+        await message.channel.send({ embeds: [embed], components: [row] });
+        await message.delete();
+    }
+
+    // 📑 أمر إنشاء لوحة القوانين المنسدلة الكاملة
+    if (command === 'setup-rules') {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return message.reply('❌ للادارة العليا فقط.');
+
+        const embed = new EmbedBuilder()
+            .setTitle('Police Department')
+            .setDescription('جميع القوانين التابعة لـ شرطة لوس سانتوس.\nنرجو من الجميع الالتزام بالقوانين الموضحة أدناه.')
+            .setColor('#e74c3c'); 
+
+        if (URL_RULES_IMAGE && URL_RULES_IMAGE.startsWith('http')) {
+            embed.setImage(URL_RULES_IMAGE);
+        }
+
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('lspd_rules_menu')
+            .setPlaceholder('اضغط هنا لقراءة القوانين')
+            .addOptions([
+                { label: 'قوانين الشرطة', value: 'rule_police', description: 'القوانين والبروتوكولات العامة العسكرية', emoji: '👮' },
+                { label: 'قوانين الصاعق الكهربائي', value: 'rule_taser', description: 'شروط وضوابط استخدام التايزر الصاعق', emoji: '⚡' },
+                { label: 'قوانين الراديو', value: 'rule_radio', description: 'آداب الالتزام بالموجات والتشفير الصوتي', emoji: '📻' },
+                { label: 'قوانين طلق النار', value: 'rule_shooting', description: 'حالات استخدام السلاح الحي وقواعد الاشتباك', emoji: '🔫' },
+                { label: 'عدد السرقات', value: 'rule_robberies', description: 'التعامل مع البلاغات والسرقات الكبرى والصغرى', emoji: '💰' },
+                { label: 'الية استخدام الـ Spike', value: 'rule_spike', description: 'شروط فرش شريط المسامير لتعطيل الكفرات', emoji: '🛑' },
+                { label: 'قوانين المطاردات', value: 'rule_pursuits', description: 'بروتوكول ملاحقة المركبات وتصنيف السرعات', emoji: '🏎️' },
+                { label: 'قوانين البانك', value: 'rule_bank', description: 'آلية واستخدام الـ Panic بمختلف أنواعه', emoji: '🏦' }
+            ]);
+
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+        await message.channel.send({ content: '@everyone', embeds: [embed], components: [row] });
+        await message.delete();
+    }
+
     if (command === 'lspd-admin') {
         if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) return message.reply('❌ ليس لديك صلاحية الوصول للوحة التحكم.');
         
@@ -197,6 +256,179 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+    // 🎫 التفاعل لفتح التكت 
+    if (interaction.isButton() && interaction.customId === 'lspd_open_ticket') {
+        await interaction.deferReply({ ephemeral: true });
+
+        const ticketName = `ticket-${interaction.user.username}`;
+        
+        const existingChannel = interaction.guild.channels.cache.find(c => c.name === ticketName.toLowerCase());
+        if (existingChannel) {
+            return await interaction.editReply({ content: `❌ لديك تكت مفتوح بالفعل هنا: ${existingChannel}` });
+        }
+
+        const ticketChannel = await interaction.guild.channels.create({
+            name: ticketName,
+            type: ChannelType.GuildText,
+            parent: TICKET_CATEGORY_ID || null,
+            permissionOverwrites: [
+                { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] }, 
+                { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }, 
+                { id: interaction.guild.roles.cache.find(r => r.permissions.has(PermissionFlagsBits.ManageRoles))?.id || interaction.guild.roles.everyone.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] } 
+            ]
+        }).catch(() => null);
+
+        if (!ticketChannel) {
+            return await interaction.editReply({ content: '❌ حدث خطأ أثناء إنشاء التكت، يرجى التأكد من صلاحيات البوت ووجود الكاتيجوري.' });
+        }
+
+        const welcomeTicketEmbed = new EmbedBuilder()
+            .setTitle(`🔓 تكت جديد | رقم الروم #${ticketChannel.id.slice(-4)}`)
+            .setDescription(`مرحباً بك عسكري/ضابط ${interaction.user}\nلقد قمت بفتح تكت للتواصل مع مسؤولي الـ LSPD، يرجى كتابة استفسارك أو مشكلتك بوضوح وانتظار الرد الإداري.`)
+            .setColor('#2ecc71')
+            .setTimestamp();
+
+        const controlRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('close_ticket').setLabel('قفل التكت 🔒').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('delete_ticket').setLabel('حذف نهائي 🗑️').setStyle(ButtonStyle.Secondary)
+        );
+
+        await ticketChannel.send({ content: `${interaction.user} | طاقم الإدارة`, embeds: [welcomeTicketEmbed], components: [controlRow] });
+        await interaction.editReply({ content: `✅ تم فتح التكت الخاص بك بنجاح! توجه إلى هنا: ${ticketChannel}` });
+
+        const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL);
+        if (logChannel) {
+            const logEmbed = new EmbedBuilder()
+                .setTitle('📥 إنشاء تكت جديد')
+                .addFields(
+                    { name: '👤 العضو:', value: `${interaction.user}`, inline: true },
+                    { name: '📺 الروم الجديد:', value: `${ticketChannel}`, inline: true }
+                ).setColor('#2ecc71').setTimestamp();
+            await logChannel.send({ embeds: [logEmbed] });
+        }
+    }
+
+    // 🔒 التحكم بأزرار التكت 
+    if (interaction.isButton() && (interaction.customId === 'close_ticket' || interaction.customId === 'delete_ticket')) {
+        if (interaction.customId === 'close_ticket') {
+            await interaction.reply({ content: '🔒 سيتم قفل الروم ومنع الإرسال حالياً...' });
+            await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(() => null);
+            const originalUser = interaction.guild.members.cache.find(m => interaction.channel.name.includes(m.user.username.toLowerCase()));
+            if (originalUser) {
+                await interaction.channel.permissionOverwrites.edit(originalUser.id, { SendMessages: false }).catch(() => null);
+            }
+        } else if (interaction.customId === 'delete_ticket') {
+            await interaction.reply({ content: '🗑️ سيتم حذف التكت نهائياً خلال 5 ثوانٍ...' });
+            setTimeout(async () => {
+                await interaction.channel.delete().catch(() => null);
+            }, 5000);
+        }
+    }
+
+    // 📑 التفاعل مع القائمة المنسدلة لعرض القوانين المحددة (تم تحديث القوانين كاملة بأرقام عادية)
+    if (interaction.isStringSelectMenu() && interaction.customId === 'lspd_rules_menu') {
+        const selectedValue = interaction.values[0];
+        let ruleTitle = "";
+        let ruleContent = "";
+
+        if (selectedValue === 'rule_police') {
+            ruleTitle = "👮 قوانين وتعليمات الشرطة العامة";
+            ruleContent = "1- الالتزام بالقوانين والتعاميم الصادرة من رئاسة الشرطة متمثلة بكافة قطاعاتها الشرطة.\n" +
+                          "2- الجدية في العمل التعامل مع دورك كشرطي بجدية.\n" +
+                          "3- الاحترام المتبادل و تجنب التسلط على المواطنين أو الرتب الأقل منك من زملائك.\n" +
+                          "4- يحظر بيع أو إعطاء معدات الشرطة للمواطنين أو المسعفين (باند نهائي).\n" +
+                          "5- الالتزام بالمعدات الخاصة برتبتك سواء الملابس, المركبات, والأسلحة الخاصة لرتبتك فقط.\n" +
+                          "6- يُمنع استخدام سيارات غير حكومية أثناء الدوام لأي سبب كان. في حال الحاجة لمركبة، استخدم الراديو لطلب وحدة نقل من زملائك.\n" +
+                          "7- يمنع رفع السلاح الناري في المستشفى او المباني الحكومية، ويُكتفى باستخدام التيزر فقط.\n" +
+                          "8- لا يُسمح أثناء المخالفات المرورية بتقييد المخالف إلا إذا كان غير متعاون أو كان مطلوب لدى الشرطة بجريمة جنائية.\n" +
+                          "9- التعامل مع الخاطفين: تلبية المطالب غير التعجيزية دون المساس بهيبة الشرطة، وعدم اتخاذ أي إجراء دون استشارة المسؤول.\n" +
+                          "10- تجنب المشكلات الشخصية، والتحلي بضبط النفس، والامتناع عن التلفظ بألفاظ غير لائقة أثناء العمل الميداني.\n" +
+                          "11- يمنع تفتيش المجرمين الا في الزنزانات. لا يحق لك تفتيش الشرطي الا وقت الاصطفاف للتاكد من العتاد.\n" +
+                          "12- يُستحق التقاعد بدءًا من رتبة سينيور ليد أوفيسر وما فوق، أما ما دون ذلك فلا يُسمح إلا بتقديم الاستقالة.\n" +
+                          "13- يُمنع على أي شرطي تجاوز التسلسل القيادي والتوجه مباشرة إلى قيادة الشرطة. يجب الالتزام بالسلم القيادي الكامل حسب اختصاص المشكلة. أي تجاوز لهذا النظام يؤدي إلى الفصل المباشر، حتى في الحالات الواضحة.\n\n" +
+                          "🔹 __التعامل مع المسقطين والمسعفين:__\n" +
+                          "1- احترام الطاقم الطبي وعدم الاستهزاء بهم.\n" +
+                          "2- عدم تحريك الجثه من موقعها حتى وصول المسعفين.\n" +
+                          "3- تصوير الجثه في موقعها لجمع الادلة.";
+        } else if (selectedValue === 'rule_taser') {
+            ruleTitle = "⚡ قوانين الصاعق الكهربائي";
+            ruleContent = "1- في حال كان الشخص يحمل بيده سلاحاً أبيض.\n" +
+                          "2- في حال اقترابه من ركوب مركبة أو اقترب من ركوب دراجة نارية.\n" +
+                          "3- في حال عدم انصياع المواطن لأوامر الشرطة بشكل واضح.\n" +
+                          "4- في حال مرور 15 ثانية من المطاردة هروباً على الأقدام ويجب عليك تحذير المطارد بثلاث تحذيرات كل 5 ثواني بعد ذلك يتم إستخدام الصاعق الكهربائي (Taser).\n" +
+                          "5- الفاصل الزمني بين الطلقة والأخرى 5 ثواني.\n" +
+                          "6- عند استخدام الـ (Taser)، يجب إبلاغ زميلك بالمطاردة (كالذكر في الراديو: ضاعت الطلقه).\n" +
+                          "7- في حال كان الشخص متجهًا نحو البحر أو تأكد أنه ينوي التوجه للبحر.";
+        } else if (selectedValue === 'rule_radio') {
+            ruleTitle = "📻 قوانين آداب واستخدام الراديو";
+            ruleContent = "1- التحدث بوضوح وببطء.\n" +
+                          "2- التزام الأسبقية.\n" +
+                          "3- عدم استخدام أسماء الأشخاص.\n" +
+                          "4- الاختصار في البلاغات.\n" +
+                          "5- بين كل بلاغ وبلاغ 5 ثواني.";
+        } else if (selectedValue === 'rule_shooting') {
+            ruleTitle = "🔫 قوانين إطلاق النار وقواعد الاشتباك";
+            ruleContent = "1- يمنع منعاً باتاً محاولة افتعال الفايت.\n" +
+                          "2- يمنع طلق النار عن طريق المركبة إلا إذا الشخص بادل طلق النار.\n\n" +
+                          "🔹 __الحالات المسموحة لطلق النار:__\n" +
+                          "1- في حال الشخص صوب السلاح بشكل مباشر يتم إطلاق النار.\n" +
+                          "2- في حال الشخص تواجد في موقع إطلاق النار ولم ينسحب بعد التحذير (الطلق على الأطراف).\n" +
+                          "3- في حال الشخص كان يهرب على الأقدام وقام بإخراج السلاح يتم (الطلق على الأطراف).\n" +
+                          "4- في حال الشخص دهس شرطي عن طريق المركبة بشكل متعمد يتم (طلق النار على الكفرات).";
+        } else if (selectedValue === 'rule_robberies') {
+            ruleTitle = "💰 العدد المسموح في الحالات والسرقات";
+            ruleContent = "• Store Robbery ( 1 - 4 ) | Police ( 1 - 5 ).\n" +
+                          "• ATM Robbery ( 2 - 5 ) | Police ( 2 - 6 ).\n" +
+                          "• House Robbery ( 3 - 6 ) | Police ( 3 - 7 ).\n" +
+                          "• Cash Exchange Robbery ( 4 - 7 ) | Police ( 4 - 8 ).\n" +
+                          "• Laundromat Robbery ( 5 - 8 ) | Police ( 5 - 9 ).\n\n" +
+                          "⚠️ __السرقات الموضحة بالأسفل إلزامي وجود رهائن:__\n" +
+                          "• Jewelry Robbery ( 6 - 9 ) | Police ( 8 - 10).\n" +
+                          "• Fleeca Bank Robbery ( 8 - 11 ) | Police ( 9 - 12).\n" +
+                          "• Blaine County Robbery ( 9 - 12 ) | Police ( 10 - 13).\n\n" +
+                          "🚨 __الحالات المفتوحة:__\n" +
+                          "• For Players: 18 MAX\n" +
+                          "• Police: 20 MAX";
+        } else if (selectedValue === 'rule_spike') {
+            ruleTitle = "🛑 آلية استخدام الـ Spike (شريط المسامير)";
+            ruleContent = "ممنوع استخدام السبايك إلا لهذه الحالات:\n" +
+                          "1- في حال المركبة استغرقت دقيقتين على الطرق السريعة.\n" +
+                          "2- أخذ الإذن من مسؤول الحالة.";
+        } else if (selectedValue === 'rule_pursuits') {
+            ruleTitle = "🏎️ قوانين وآلية المطاردات";
+            ruleContent = "🔹 __آلية مطاردة المركبة:__\n" +
+                          "1- إبلاغ مركز العمليات بالحالة (ذكر موقع الحالة - ذكر تفاصيل المركبة - ذكر المخالفة وملامح الشخص).\n" +
+                          "2- إبقاء مسافة آمنة بين الشخص.\n" +
+                          "3- عدم الصدم بشكل عشوائي.\n" +
+                          "4- في حال عدم التزام الشخص بقوانين الصدم الاحترافي.\n" +
+                          "5- التعامل مع الدراجات النارية وفق قوانين استخدام الـ (Spike).\n\n" +
+                          "🔹 __آلية الصدم الاحترافي:__\n" +
+                          "1- في حال فشل الهروب الآمن (في الحالات).\n" +
+                          "2- يجب وجود مركبة أخرى (إذا وجد).\n" +
+                          "3- بدء الصدم بعد مرور 3 دقائق من الحالة.\n" +
+                          "4- بين كل صدمة والأخرى 30 ثانية.";
+        } else if (selectedValue === 'rule_bank') {
+            ruleTitle = "🏦 قوانين وبروتوكول البانك";
+            ruleContent = "1- ممنوع تكرار البانك.\n" +
+                          "2- يجب الالتزام بآلية البانك.\n" +
+                          "3- يمنع استخدام البانك كتوضيح لموقعك ويجب طلب (PickUp).\n\n" +
+                          "🔹 __آلية استخدام البانك:__\n" +
+                          "1- Panic A: يستخدم البانك لغرض الإسقاط الطبيعي مثل الجوع والوقوع من المركبة وإلى آخره.\n" +
+                          "2- Panic B: يستخدم في حال إسقاطك من قبل شخص سواء عن طريق طلق نار أو سلاح أبيض وإلى آخره.\n" +
+                          "3- Panic C: يستخدم في حال تم اختطافك.\n" +
+                          "💡 __توضيح للبانك C:__ في حال تم ترفيعك بالسلاح أو محاولة اختطافك يتم طلب البانك فقط.";
+        }
+
+        const ruleResponseEmbed = new EmbedBuilder()
+            .setTitle(ruleTitle)
+            .setDescription(ruleContent)
+            .setColor('#1a237e')
+            .setFooter({ text: 'بوابة القوانين والأنظمة الرسمية لـ LSPD' })
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [ruleResponseEmbed], ephemeral: true });
+    }
+
     if (interaction.isButton() && interaction.customId === 'lspd_apply_btn') {
         const modal = new ModalBuilder().setCustomId('lspd_apply_modal').setTitle('استمارة الانضمام إلى LSPD');
         modal.addComponents(
@@ -363,11 +595,8 @@ client.on('interactionCreate', async (interaction) => {
 
         if (!targetMember || !role) return interaction.reply({ content: '❌ خطأ: لم أجد العضو أو الرتبة في السيرفر.', ephemeral: true });
 
-        // التحديث الذكي: تنظيف كافة رتب الـ LSPD السابقة أولاً لمنع تراكم الرتب القديمة عند الترقية أو الكسر
         const rolesToRemove = ALL_LSPD_ROLE_IDS.filter(id => id !== selectedRoleId);
         await targetMember.roles.remove(rolesToRemove).catch(() => null);
-
-        // الآن نقوم بإعطاء الرتبة الجديدة المستهدفة (سواء كانت ترقية أو كسر) لكي تظهر رتبته الحالية فقط
         await targetMember.roles.add(selectedRoleId).catch(() => null);
 
         const logEmbed = new EmbedBuilder()
@@ -433,18 +662,16 @@ client.on('interactionCreate', async (interaction) => {
             color = '#c0392b'; 
             actionTitle = '❌ قرار طرد وفصل رسمي كامل من قطاع الـ LSPD'; 
             
-            // سحب كل شيء يخص الـ LSPD (الرتب العسكرية، رتب القبول ورتب التحذيرات كاملة بدون ترك أي أثر للضابط المفصول)
             const allRolesToStrip = [
                 ROLE_ACCEPT_1, ROLE_ACCEPT_2, 
                 ROLE_WARN_1, ROLE_WARN_2, ROLE_WARN_3,
                 ...ALL_LSPD_ROLE_IDS
             ].filter(id => id && id.length > 5);
             
-            // سحب الرتب دفعة واحدة وتصفير البيانات
             await targetMember.roles.remove(allRolesToStrip).catch((err) => console.log("خطأ في سحب رتب الفصل، يرجى مراجعة صلاحيات البوت: ", err));
             
             allData.warnings[targetId] = 0;
-            allData.points[targetId] = 0; // تصفير النقاط عند الطرد
+            allData.points[targetId] = 0; 
             savePointsData(allData);
         }
         else if (actionFull.startsWith('points')) { 
