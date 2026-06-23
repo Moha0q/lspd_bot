@@ -24,16 +24,13 @@ const client = new Client({
 
 const PREFIX = '!';
 const POINTS_FILE = './points.json';
+const COUNTER_FILE = './ticket_counter.json'; // ملف حفظ أرقام التكتات الترتيبية
 
-// دالة جلب البيانات المحدثة لدعم النقاط والتحذيرات التراكمية
+// دالة جلب بيانات النقاط والتحذيرات
 function getPointsData() {
     if (!fs.existsSync(POINTS_FILE)) fs.writeFileSync(POINTS_FILE, JSON.stringify({ points: {}, warnings: {} }));
     let data;
-    try {
-        data = JSON.parse(fs.readFileSync(POINTS_FILE, 'utf-8'));
-    } catch (e) {
-        data = {};
-    }
+    try { data = JSON.parse(fs.readFileSync(POINTS_FILE, 'utf-8')); } catch (e) { data = {}; }
     if (!data.points) data.points = {};
     if (!data.warnings) data.warnings = {};
     return data;
@@ -43,27 +40,35 @@ function savePointsData(data) {
     fs.writeFileSync(POINTS_FILE, JSON.stringify(data, null, 4));
 }
 
+// دالة جلب وزيادة رقم التكت الترتيبي
+function getNextTicketNumber() {
+    if (!fs.existsSync(COUNTER_FILE)) fs.writeFileSync(COUNTER_FILE, JSON.stringify({ count: 0 }));
+    let data;
+    try { data = JSON.parse(fs.readFileSync(COUNTER_FILE, 'utf-8')); } catch (e) { data = { count: 0 }; }
+    data.count += 1;
+    fs.writeFileSync(COUNTER_FILE, JSON.stringify(data, null, 4));
+    // إرجاع الرقم منسق بـ 4 خانات مثل 0001
+    return String(data.count).padStart(4, '0');
+}
+
 // ================= [ 👮 إعدادات الرتب ورومات اللوق بالـ ID 👮 ] =================
 
-// 🆕 ⚠️ حط هنا IDs رتب التحذيرات حقت سيرفرك:
 const ROLE_WARN_1 = '1515781909060522114'; 
 const ROLE_WARN_2 = '1515781910155231454'; 
 const ROLE_WARN_3 = '1515781911535157349'; 
 
-// 🆕 حط ID روم الترحيب هنا
 const CHANNEL_WELCOME_LOG = '1518793447862042757'; 
-
 const CHANNEL_APPLY_LOG = '1518794178966978682'; 
 
-// 🎫 إعدادات نظام التكت الجديد (تعديل حسب سيرفرك)
-const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات
-const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات 
+// 🎫 إعدادات نظام التكت (تعديل حسب سيرفرك)
+const TICKET_CATEGORY_ID = '1515782065025449994'; // ID الكاتيجوري اللي تفتح فيه التكتات[cite: 1]
+const TICKET_LOG_CHANNEL = '1518795837017161798'; // روم لوغ التكتات[cite: 1]
 
-// 🖼️ روابط صور لوحات التحكم (قم بتغييرها لروابط صور تخص الـ LSPD)
+// 🖼️ روابط صور لوحات التحكم
 const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
 const URL_TICKET_IMAGE      = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
 const URL_ADMIN_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
-const URL_RULES_IMAGE       = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; // صورة بنر القوانين
+const URL_RULES_IMAGE       = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
 
 // 📂 رومات اللوغات المنفصلة بالكامل:
 const LOG_APPLY_DECISION = '1518795837017161798'; 
@@ -76,7 +81,6 @@ const LOG_POINTS = '1515782206394732614';
 const ROLE_ACCEPT_1 = '1515781932217274509'; 
 const ROLE_ACCEPT_2 = '1515781826575204645'; 
 
-// 📑 قائمة رتب الـ LSPD المحدثة بالكامل بناءً على طلبك
 const LSPD_ROLES = [
     { label: '⭐ Colonel', value: '1515781726205644810' },
     { label: '⭐ Major', value: '1515781727593824326' },
@@ -94,7 +98,6 @@ const LSPD_ROLES = [
     { label: '🔰 Cadet', value: '1515781826575204645' }
 ];
 
-// مصفوفة تجمع كل رتب السلك الأمني لتسهيل التطهير والسحب التلقائي
 const ALL_LSPD_ROLE_IDS = LSPD_ROLES.map(r => r.value);
 
 // ==========================================================================================
@@ -105,7 +108,6 @@ client.on('ready', () => {
 
 const activeActions = new Map();
 
-// حدث الترحيب التلقائي للقطاع
 client.on('guildMemberAdd', async (member) => {
     const welcomeChannel = member.guild.channels.cache.get(CHANNEL_WELCOME_LOG);
     if (!welcomeChannel) return;
@@ -170,7 +172,6 @@ client.on('messageCreate', async (message) => {
         await message.delete();
     }
 
-    // 🎫 أمر إنشاء لوحة فتح التكت 
     if (command === 'setup-ticket') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return message.reply('❌ للادارة العليا فقط.');
 
@@ -192,7 +193,6 @@ client.on('messageCreate', async (message) => {
         await message.delete();
     }
 
-    // 📑 أمر إنشاء لوحة القوانين المنسدلة الكاملة
     if (command === 'setup-rules') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return message.reply('❌ للادارة العليا فقط.');
 
@@ -256,17 +256,13 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-    // 🎫 التفاعل لفتح التكت 
+    // 🎫 التفاعل لفتح التكت بنظام الرقم التسلسلي المحدث
     if (interaction.isButton() && interaction.customId === 'lspd_open_ticket') {
         await interaction.deferReply({ ephemeral: true });
 
-        const ticketName = `ticket-${interaction.user.username}`;
+        const nextNum = getNextTicketNumber(); // جلب الرقم الترتيبي مثل 0001
+        const ticketName = `ticket-${nextNum}`;
         
-        const existingChannel = interaction.guild.channels.cache.find(c => c.name === ticketName.toLowerCase());
-        if (existingChannel) {
-            return await interaction.editReply({ content: `❌ لديك تكت مفتوح بالفعل هنا: ${existingChannel}` });
-        }
-
         const ticketChannel = await interaction.guild.channels.create({
             name: ticketName,
             type: ChannelType.GuildText,
@@ -283,7 +279,7 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         const welcomeTicketEmbed = new EmbedBuilder()
-            .setTitle(`🔓 تكت جديد | رقم الروم #${ticketChannel.id.slice(-4)}`)
+            .setTitle(`🔓 تكت دعم جديد | رقم التكت #${nextNum}`)
             .setDescription(`مرحباً بك عسكري/ضابط ${interaction.user}\nلقد قمت بفتح تكت للتواصل مع مسؤولي الـ LSPD، يرجى كتابة استفسارك أو مشكلتك بوضوح وانتظار الرد الإداري.`)
             .setColor('#2ecc71')
             .setTimestamp();
@@ -308,15 +304,26 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // 🔒 التحكم بأزرار التكت 
+    // 🔒 التحكم بأزرار التكت وحل مشكلة التعليق بشكل نهائي
     if (interaction.isButton() && (interaction.customId === 'close_ticket' || interaction.customId === 'delete_ticket')) {
         if (interaction.customId === 'close_ticket') {
-            await interaction.reply({ content: '🔒 سيتم قفل الروم ومنع الإرسال حالياً...' });
+            await interaction.deferReply(); // تم الإصلاح: فك تعليق الزر عبر تأجيل الرد فوراً
+
             await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(() => null);
-            const originalUser = interaction.guild.members.cache.find(m => interaction.channel.name.includes(m.user.username.toLowerCase()));
-            if (originalUser) {
-                await interaction.channel.permissionOverwrites.edit(originalUser.id, { SendMessages: false }).catch(() => null);
+            
+            // محاولة إيجاد العضو صاحب التكت داخل الغرفة لسحب صلاحية الكتابة منه وتثبيتها للقراءة
+            const embeds = interaction.message.embeds;
+            if (embeds.length > 0) {
+                const description = embeds[0].description;
+                const mentionMatch = description.match(/<@!?(\count+?)>/);
+                if (mentionMatch) {
+                    const userId = mentionMatch[1];
+                    await interaction.channel.permissionOverwrites.edit(userId, { SendMessages: false }).catch(() => null);
+                }
             }
+
+            await interaction.editReply({ content: '🔒 تم قفل الروم بنجاح ومنع إرسال الرسائل للعضو.' });
+
         } else if (interaction.customId === 'delete_ticket') {
             await interaction.reply({ content: '🗑️ سيتم حذف التكت نهائياً خلال 5 ثوانٍ...' });
             setTimeout(async () => {
@@ -325,7 +332,7 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // 📑 التفاعل مع القائمة المنسدلة لعرض القوانين المحددة (تم تحديث القوانين كاملة بأرقام عادية)
+    // 📑 التفاعل مع القائمة المنسدلة لعرض القوانين المحددة
     if (interaction.isStringSelectMenu() && interaction.customId === 'lspd_rules_menu') {
         const selectedValue = interaction.values[0];
         let ruleTitle = "";
