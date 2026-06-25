@@ -61,8 +61,8 @@ const CHANNEL_WELCOME_LOG = '1518793447862042757';
 const CHANNEL_APPLY_LOG = '1518794178966978682'; 
 
 // 🎫 إعدادات نظام التكت (تعديل حسب سيرفرك)
-const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات
-const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات
+const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات[cite: 1]
+const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات[cite: 1]
 
 // 🖼️ روابط صور لوحات التحكم
 const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
@@ -87,7 +87,7 @@ const LSPD_ROLES = [
     { label: '🦅 Captain', value: '1515781772158435570' },
     { label: '🥇 First Lieutenant\'s', value: '1515781776776233080' },
     { label: '🥇 Lieutenant\'s', value: '1515781777879470241' },
-    { label: '🎖️ Staff Sergeant\'s', value: '151578107872934101' },
+    { label: '🎖️ Staff Sergeant\'s', value: '1515781807872934101' },
     { label: '🎖️ First Sergeant\'s', value: '1515781809559048284' },
     { label: '🎖️ Sergeant\'s', value: '1515781811052089506' },
     { label: '👮 Senior Officer\'s', value: '1515781817947521144' },
@@ -284,7 +284,7 @@ client.on('interactionCreate', async (interaction) => {
             .setColor('#2ecc71')
             .setTimestamp();
 
-        // 🛠️ تعديل الأزرار لتطابق الصورة تماماً (image_9d9ea0.png)
+        // 🛠️ الأزرار المقسمة على سطرين بحسب صورة image_9d9ea0.png
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('claim_ticket').setLabel('استلام 🙋‍♂️').setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId('add_user').setLabel('اضافة شخص ➕').setStyle(ButtonStyle.Secondary),
@@ -312,16 +312,27 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // الأكواد الخلفية للأزرار الجديدة (يمكنك برمجتها مستقبلاً حسب رغبتك)
-    if (interaction.isButton() && ['claim_ticket', 'add_user', 'rename_ticket', 'move_ticket', 'remind_user'].includes(interaction.customId)) {
+    // 🔒 التحكم بحماية الأزرار والمنع الأمني للأعضاء بدون رتب إدارة
+    if (interaction.isButton() && ['claim_ticket', 'rename_ticket', 'move_ticket', 'remind_user'].includes(interaction.customId)) {
+        // التحقق مما إذا كان العضو يمتلك صلاحية ManageRoles الخاصة بالإدارة
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return await interaction.reply({ content: '❌ عذراً، هذه الخاصية مخصصة لإدارة ومسؤولي قطاع الـ LSPD فقط ولا يمكنك استخدامها.', ephemeral: true });
+        }
+
+        // تنفيذ الأوامر الإدارية في حال كان يمتلك الصلاحية
         if (interaction.customId === 'claim_ticket') {
             await interaction.reply({ content: `🙋‍♂️ تم استلام التكت بواسطة: ${interaction.user}` });
         } else {
-            await interaction.reply({ content: `⚙️ هذا الزر جاهز للربط بالوظيفة المطلوبة قريباً.`, ephemeral: true });
+            await interaction.reply({ content: `⚙️ هذا الزر جاهز ومحمي إدارياً، وبانتظار ربطه بالوظيفة الكاملة لاحقاً.`, ephemeral: true });
         }
     }
 
-    // 🔒 التحكم بأزرار التكت وحل مشكلة التعليق بشكل نهائي
+    // زر إضافة شخص (متاح للجميع كما طلبت)
+    if (interaction.isButton() && interaction.customId === 'add_user') {
+        await interaction.reply({ content: `⚙️ زر إضافة شخص متاح للجميع حالياً وجاهز للربط بالوظيفة الكاملة.`, ephemeral: true });
+    }
+
+    // 🔒 التحكم بأزرار التكت وحل مشكلة التعليق بشكل نهائي (متاح للجميع)
     if (interaction.isButton() && (interaction.customId === 'close_ticket' || interaction.customId === 'delete_ticket')) {
         if (interaction.customId === 'close_ticket') {
             await interaction.deferReply(); 
@@ -346,6 +357,10 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.editReply({ content: '🔒 تم إغلاق التكت بنجاح ومنع إرسال الرسائل.', components: [deleteRow] });
 
         } else if (interaction.customId === 'delete_ticket') {
+            // حماية اختيارية لزر الحذف النهائي (تجعله للإدارة فقط لحماية ريكوردات التكت)
+            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return await interaction.reply({ content: '❌ حذف التكت نهائياً متاح للإدارة فقط.', ephemeral: true });
+            }
             await interaction.reply({ content: '🗑️ سيتم حذف التكت نهائياً خلال 5 ثوانٍ...' });
             setTimeout(async () => {
                 await interaction.channel.delete().catch(() => null);
