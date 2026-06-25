@@ -61,8 +61,8 @@ const CHANNEL_WELCOME_LOG = '1518793447862042757';
 const CHANNEL_APPLY_LOG = '1518794178966978682'; 
 
 // 🎫 إعدادات نظام التكت (تعديل حسب سيرفرك)
-const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات[cite: 1]
-const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات[cite: 1]
+const TICKET_CATEGORY_ID = '1515782000219525260'; // ID الكاتيجوري اللي تفتح فيه التكتات
+const TICKET_LOG_CHANNEL = '1515782525618753606'; // روم لوغ التكتات
 
 // 🖼️ روابط صور لوحات التحكم
 const URL_APPLY_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1515782065025449994/1518694046531457095/cc4917ae23da92ad815a259a26a974c8_1.png'; 
@@ -87,7 +87,7 @@ const LSPD_ROLES = [
     { label: '🦅 Captain', value: '1515781772158435570' },
     { label: '🥇 First Lieutenant\'s', value: '1515781776776233080' },
     { label: '🥇 Lieutenant\'s', value: '1515781777879470241' },
-    { label: '🎖️ Staff Sergeant\'s', value: '1515781807872934101' },
+    { label: '🎖️ Staff Sergeant\'s', value: '151578107872934101' },
     { label: '🎖️ First Sergeant\'s', value: '1515781809559048284' },
     { label: '🎖️ Sergeant\'s', value: '1515781811052089506' },
     { label: '👮 Senior Officer\'s', value: '1515781817947521144' },
@@ -284,12 +284,20 @@ client.on('interactionCreate', async (interaction) => {
             .setColor('#2ecc71')
             .setTimestamp();
 
-        const controlRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('close_ticket').setLabel('قفل التكت 🔒').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('delete_ticket').setLabel('حذف نهائي 🗑️').setStyle(ButtonStyle.Secondary)
+        // 🛠️ تعديل الأزرار لتطابق الصورة تماماً (image_9d9ea0.png)
+        const row1 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('claim_ticket').setLabel('استلام 🙋‍♂️').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('add_user').setLabel('اضافة شخص ➕').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('rename_ticket').setLabel('تغيير الاسم ✏️').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('move_ticket').setLabel('نقل 🔄').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('remind_user').setLabel('تذكير 🔔').setStyle(ButtonStyle.Secondary)
         );
 
-        await ticketChannel.send({ content: `${interaction.user} | طاقم الإدارة`, embeds: [welcomeTicketEmbed], components: [controlRow] });
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('close_ticket').setLabel('إغلاق التكت 🔒').setStyle(ButtonStyle.Danger)
+        );
+
+        await ticketChannel.send({ content: `${interaction.user} | طاقم الإدارة`, embeds: [welcomeTicketEmbed], components: [row1, row2] });
         await interaction.editReply({ content: `✅ تم فتح التكت الخاص بك بنجاح! توجه إلى هنا: ${ticketChannel}` });
 
         const logChannel = interaction.guild.channels.cache.get(TICKET_LOG_CHANNEL);
@@ -304,25 +312,38 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    // الأكواد الخلفية للأزرار الجديدة (يمكنك برمجتها مستقبلاً حسب رغبتك)
+    if (interaction.isButton() && ['claim_ticket', 'add_user', 'rename_ticket', 'move_ticket', 'remind_user'].includes(interaction.customId)) {
+        if (interaction.customId === 'claim_ticket') {
+            await interaction.reply({ content: `🙋‍♂️ تم استلام التكت بواسطة: ${interaction.user}` });
+        } else {
+            await interaction.reply({ content: `⚙️ هذا الزر جاهز للربط بالوظيفة المطلوبة قريباً.`, ephemeral: true });
+        }
+    }
+
     // 🔒 التحكم بأزرار التكت وحل مشكلة التعليق بشكل نهائي
     if (interaction.isButton() && (interaction.customId === 'close_ticket' || interaction.customId === 'delete_ticket')) {
         if (interaction.customId === 'close_ticket') {
-            await interaction.deferReply(); // تم الإصلاح: فك تعليق الزر عبر تأجيل الرد فوراً
+            await interaction.deferReply(); 
 
             await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone.id, { SendMessages: false }).catch(() => null);
             
-            // محاولة إيجاد العضو صاحب التكت داخل الغرفة لسحب صلاحية الكتابة منه وتثبيتها للقراءة
             const embeds = interaction.message.embeds;
             if (embeds.length > 0) {
                 const description = embeds[0].description;
-                const mentionMatch = description.match(/<@!?(\count+?)>/);
+                const mentionMatch = description.match(/<@!?(\d+?)>/);
                 if (mentionMatch) {
                     const userId = mentionMatch[1];
                     await interaction.channel.permissionOverwrites.edit(userId, { SendMessages: false }).catch(() => null);
                 }
             }
 
-            await interaction.editReply({ content: '🔒 تم قفل الروم بنجاح ومنع إرسال الرسائل للعضو.' });
+            // إضافة زر الحذف النهائي بعد الإغلاق
+            const deleteRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('delete_ticket').setLabel('حذف نهائي 🗑️').setStyle(ButtonStyle.Secondary)
+            );
+
+            await interaction.editReply({ content: '🔒 تم إغلاق التكت بنجاح ومنع إرسال الرسائل.', components: [deleteRow] });
 
         } else if (interaction.customId === 'delete_ticket') {
             await interaction.reply({ content: '🗑️ سيتم حذف التكت نهائياً خلال 5 ثوانٍ...' });
